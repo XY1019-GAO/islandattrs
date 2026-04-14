@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "islandattrs"
+version = "0.1.2"
+authors = [
+    {name = "Gao xy", email = "Gaoxy1019@163.com"}
+]
+description = "岛屿属性计算工具包 - 计算距离、邻近性、陆地占比等指标"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text="MIT"}
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: GIS",
+]
+dependencies = [
+  "geopandas>=0.14",
+  "shapely>=2.0",
+  "pyproj>=3.6",
+  "networkx>=3.0",
+  "tqdm>=4.66",
+  "scipy>=1.11",
+  "scikit-learn>=1.3",
+  "pandas>=2.1",
+  "numpy>=1.26",
+  "matplotlib>=3.8",
+  "rtree>=1.1",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/XY1019-GAO/islandattrs"
+"Bug Reports" = "https://github.com/XY1019-GAO/islandattrs/issues"
+"Documentation" = "https://github.com/XY1019-GAO/islandattrs#readme"
+"Repository" = "https://github.com/XY1019-GAO/islandattrs.git"
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+"islandattrs" = ["data/**/*"]  # 强制包含 data 目录下所有文件
