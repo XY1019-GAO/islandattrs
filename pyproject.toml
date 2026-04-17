@@ -1,13 +1,11 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "islandattrs"
 version = "0.1.2"
-authors = [
-  { name="XY1019-GAO" }
-]
+authors = [{ name="XY1019-GAO" }]
 description = "岛屿生物地理学领域专业的岛屿地理属性计算工具包"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -17,7 +15,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-# 限制依赖版本，解决Anaconda环境兼容问题
+
 dependencies = [
     "geopandas>=1.0.0",
     "pandas>=2.0.0,<2.3.0",
@@ -35,21 +33,11 @@ dependencies = [
 ]
 
 [tool.setuptools]
-# 自动发现所有子包
-packages = ["islandattrs", "islandattrs.data", "islandattrs.tests"]
-# 强制包含包内的非代码文件
 include-package-data = true
 
-# 明确指定要打包的所有数据文件
 [tool.setuptools.package-data]
-"islandattrs.data" = ["*.xlsx", "*.shp", "*.shx", "*.dbf", "*.prj", "*.cpg", "*.sbn", "*.sbx", "*.xml", "*.csv"]
-"islandattrs.data.built_in_results" = ["*.xlsx"]
+"islandattrs.data" = ["*"]
+"islandattrs.data.built_in_results" = ["*"]
 "islandattrs.data.test_data" = ["*"]
-"islandattrs.tests" = ["*.py"]
 
 
-[project.urls]
-"Homepage" = "https://github.com/XY1019-GAO/islandattrs"
-"Bug Reports" = "https://github.com/XY1019-GAO/islandattrs/issues"
-"Documentation" = "https://github.com/XY1019-GAO/islandattrs#readme"
-"Repository" = "https://github.com/XY1019-GAO/islandattrs.git"

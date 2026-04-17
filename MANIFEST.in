@@ -1,0 +1,5 @@
+recursive-include islandattrs/data *
+recursive-include islandattrs/tests *.py
+graft islandattrs/data
+graft islandattrs/tests
+include README.md
