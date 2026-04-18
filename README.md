@@ -99,13 +99,62 @@ calculator.save_results(
 ### 4. 命令行调用
 ```bash
 # 1. 查看命令行帮助（了解所有可用参数）
-islandattrs -h
+python -m islandattrs -h
 
-# 2. 目标岛屿模式：计算所有属性，输出Excel格式
-islandattrs --islands 你的岛屿.shp --coastline 大陆海岸线.shp --target-file 目标岛屿.xlsx --output ./output --all --sdm-target-only
+# 2. 内置数据调取（群岛名录、内置计算结果）
+python -m islandattrs --list-archi -o E:\islandattrs_test\output\群岛名录.xlsx
 
-# 3. 全岛屿模式：仅计算DM和SDM属性，输出Shapefile格式
-islandattrs --islands 你的岛屿.shp --coastline 大陆海岸线.shp --output ./output --attributes DM SDM --save-formats shapefile
+# 3. 根据群岛ID调取内置计算结果并保存
+python -m islandattrs --get-result 1 -o E:\islandattrs_test\output\群岛1_内置结果.xlsx
+
+# 4. 基于全部岛屿，计算全部岛屿的所有属性
+python -m islandattrs ^
+--islands E:\islandattrs_test\islandattrs_test\zs\zs.shp ^
+--coastline E:\islandattrs_test\islandattrs_test\zs\shoreline.shp ^
+--island-id-column ID_World ^
+--all ^
+--output-dir E:\islandattrs_test\output ^
+--prefix 舟山_全部岛屿_所有属性_自定义ID列
+
+
+# 5. 基于全部岛屿，计算目标岛屿的所有属性
+python -m islandattrs ^
+--islands E:\islandattrs_test\islandattrs_test\zs\zs.shp ^
+--coastline E:\islandattrs_test\islandattrs_test\zs\shoreline.shp ^
+--island-id-column ID_World ^
+--target-file E:\islandattrs_test\islandattrs_test\zs\zs.xlsx ^
+--target-id-column TargetID ^
+--all ^
+--output-dir E:\islandattrs_test\output ^
+--prefix 舟山_目标岛屿_所有属性_自定义双ID列
+
+
+# 6. 基于全部岛屿，计算目标岛屿的所有属性（SDM/NI/NI' 基于目标岛屿）
+python -m islandattrs ^
+--islands E:\islandattrs_test\islandattrs_test\zs\zs.shp ^
+--coastline E:\islandattrs_test\islandattrs_test\zs\shoreline.shp ^
+--island-id-column ID_World ^
+--target-file E:\islandattrs_test\islandattrs_test\zs\zs.xlsx ^
+--target-id-column TargetID ^
+--sdm-target-only ^
+--ni-target-only ^
+--all ^
+--output-dir E:\islandattrs_test\output ^
+--prefix 舟山_目标岛屿_所有属性_SDM_NI基于目标_自定义ID列
+
+
+# 7. 基于全部岛屿，计算目标岛屿的某一个/几个属性
+python -m islandattrs ^
+--islands E:\islandattrs_test\islandattrs_test\zs\zs.shp ^
+--coastline E:\islandattrs_test\islandattrs_test\zs\shoreline.shp ^
+--island-id-column ID_World ^
+--target-file E:\islandattrs_test\islandattrs_test\zs\zs.xlsx ^
+--target-id-column TargetID ^
+--attributes DN5 DNL B1 ^
+--output-dir E:\islandattrs_test\output ^
+--prefix 舟山_目标岛屿_DN5_DNL_B1_自定义ID列
+
+
 ```
 
 ## 测试方法

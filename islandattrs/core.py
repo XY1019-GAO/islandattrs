@@ -90,14 +90,15 @@ class IslandAttributeCalculator:
     }
     
     def __init__(self, 
-                 coastline_path=None, 
-                 islands_path=None,
-                 target_file_path=None,
-                 target_id_column='ID',
-                 input_dir="input",
-                 output_dir="output",
-                 coastline_filename="C_shoreline.shp",
-                 islands_filename="ArchipelagoDeColonpoly.shp"):
+             coastline_path=None, 
+             islands_path=None,
+             target_file_path=None,
+             target_id_column='ID',
+             island_id_column='ID',  # 🔥 新增：自定义岛屿图层ID列名
+             input_dir="input",
+             output_dir="output",
+             coastline_filename="C_shoreline.shp",
+             islands_filename="ArchipelagoDeColonpoly.shp"):
         """
         初始化计算器
         :param coastline_path: 海岸线shp文件完整路径
@@ -123,6 +124,7 @@ class IslandAttributeCalculator:
         # 目标岛屿相关配置
         self.target_file_path = target_file_path
         self.target_id_column = target_id_column
+        self.island_id_column = island_id_column 
         
         # 输出目录
         self.output_dir = output_dir
@@ -224,7 +226,7 @@ class IslandAttributeCalculator:
             target_ids = target_df[self.target_id_column].dropna().unique()
             
             # 匹配岛屿图层的ID数据类型
-            island_id_dtype = self.islands_utm_full['ID'].dtype
+            island_id_dtype = self.islands_utm_full[self.island_id_column].dtype
             try:
                 target_ids = target_ids.astype(island_id_dtype)
             except Exception as e:
@@ -232,8 +234,8 @@ class IslandAttributeCalculator:
                 return False
             
             # 验证ID有效性，过滤不存在的ID
-            valid_ids = [id for id in target_ids if id in self.islands_utm_full['ID'].values]
-            invalid_ids = [id for id in target_ids if id not in self.islands_utm_full['ID'].values]
+            valid_ids = [id for id in target_ids if id in self.islands_utm_full[self.island_id_column].values]
+            invalid_ids = [id for id in target_ids if id not in self.islands_utm_full[self.island_id_column].values]
             
             if invalid_ids:
                 print(f"⚠ 警告: 以下目标ID在岛屿图层中不存在，已自动过滤: {invalid_ids}")
@@ -245,7 +247,7 @@ class IslandAttributeCalculator:
             # 赋值目标模式相关属性
             self.target_island_ids = set(valid_ids)
             self.is_target_mode = True
-            self.islands_utm = self.islands_utm_full[self.islands_utm_full['ID'].isin(self.target_island_ids)].copy()
+            self.islands_utm = self.islands_utm_full[self.islands_utm_full[self.island_id_column].isin(self.target_island_ids)].copy()
             
             print(f"✓ 目标岛屿加载完成，有效目标岛屿数量: {len(self.target_island_ids)}")
             return True
@@ -288,10 +290,10 @@ class IslandAttributeCalculator:
         coastline = self.clean_geometry(coastline)
         
         # 自动添加ID列（如果不存在）
-        if 'ID' not in islands.columns:
-            print("岛屿图层无ID列，正在自动添加ID列（从1开始递增）...")
-            islands['ID'] = range(1, len(islands) + 1)
-            print(f"✓ ID列添加完成，ID范围: 1-{len(islands)}")
+        if self.island_id_column not in islands.columns:
+            print(f"岛屿图层无 {self.island_id_column} 列，正在自动添加（从1开始递增）...")
+            islands[self.island_id_column] = range(1, len(islands) + 1)
+            print(f"✓ {self.island_id_column} 列添加完成，ID范围: 1-{len(islands)}")
         
         self.original_crs = islands.crs
         print(f"原始坐标系: {self.original_crs}")
@@ -355,8 +357,11 @@ class IslandAttributeCalculator:
         self.islands_utm_full['Area'] = self.islands_utm_full['Area'].astype('float32')
         self.islands_utm_full['Lon'] = self.islands_utm_full['Lon'].astype('float32')
         self.islands_utm_full['Lat'] = self.islands_utm_full['Lat'].astype('float32')
-        if 'ID' in self.islands_utm_full.columns:
-            self.islands_utm_full['ID'] = pd.to_numeric(self.islands_utm_full['ID'], downcast='integer')
+        if self.island_id_column in self.islands_utm_full.columns:  # 🔥 替换 1
+            self.islands_utm_full[self.island_id_column] = pd.to_numeric(
+                self.islands_utm_full[self.island_id_column], 
+                downcast='integer'
+            )  # 🔥 替换 2
         print("✓ 数据类型优化完成")
         
         # 创建海岸线空间索引，提升距离计算效率
@@ -461,7 +466,7 @@ class IslandAttributeCalculator:
                             min_distance = self.coastline_utm.distance(island_boundary).min()
                         
                         if min_distance < float('inf'):
-                            print(f"⚠ 岛屿 {island['ID']} 使用抽样海岸线计算距离: {min_distance/1000:.2f} km")
+                            print(f"⚠ 岛屿 {island[self.island_id_column]} 使用抽样海岸线计算距离: {min_distance/1000:.2f} km")
                         else:
                             min_distance = 0
                             no_coastline_count += 1
@@ -472,14 +477,14 @@ class IslandAttributeCalculator:
                 dm_values.append(min_distance / 1000)  # 转换为km
                 
             except Exception as e:
-                print(f"❌ 岛屿 {island['ID']} 处理失败: {e}")
+                print(f"❌ 岛屿 {island[self.island_id_column]} 处理失败: {e}")
                 dm_values.append(0)
                 error_count += 1
         
         # ====================== 修复：安全赋值 ======================
         self.islands_utm_full['DM'] = dm_values
-        dm_mapping = dict(zip(self.islands_utm_full['ID'], dm_values))
-        self.islands_utm['DM'] = self.islands_utm['ID'].map(dm_mapping)
+        dm_mapping = dict(zip(self.islands_utm_full[self.island_id_column], dm_values))
+        self.islands_utm['DM'] = self.islands_utm[self.island_id_column].map(dm_mapping)
         self.calculated_attributes.add('DM')
         
         # 计算结果统计
@@ -516,7 +521,8 @@ class IslandAttributeCalculator:
             if not self.is_target_mode:
                 print("❌ 仅目标岛屿模式需要先加载目标岛屿")
                 return False
-            gdf = self.islands_utm_full[self.islands_utm_full.ID.isin(self.target_island_ids)].copy()
+            gdf = self.islands_utm_full[self.islands_utm_full[self.island_id_column]
+.isin(self.target_island_ids)].copy()
         else:
             gdf = self.islands_utm_full.copy()
 
@@ -566,9 +572,9 @@ class IslandAttributeCalculator:
             idx.insert(i, geom_i.bounds)
 
         # ====================== 修复：安全赋值 ======================
-        sdm_map = dict(zip(gdf.ID, gdf.SDM))
-        self.islands_utm_full["SDM"] = self.islands_utm_full.ID.map(sdm_map)
-        self.islands_utm["SDM"] = self.islands_utm.ID.map(sdm_map)
+        sdm_map = dict(zip(gdf[self.island_id_column], gdf.SDM))
+        self.islands_utm_full["SDM"] = self.islands_utm_full[self.island_id_column].map(sdm_map)
+        self.islands_utm["SDM"] = self.islands_utm[self.island_id_column].map(sdm_map)
         self.calculated_attributes.add("SDM")
 
         # 保存计算选项
@@ -608,13 +614,13 @@ class IslandAttributeCalculator:
         
         # 构建BallTree快速筛选候选（查询前20个质心最近的，足够覆盖真实最近5个）
         tree = BallTree(centroids, metric='euclidean', leaf_size=20)
-        k_candidate = min(20, n_islands)  # 候选数量，保证不会漏算
+        k_candidate = min(50, n_islands)  # 候选数量，保证不会漏算
         _, candidate_indices = tree.query(centroids, k=k_candidate)
         
         dn5_values = []
         for i in tqdm(range(n_islands), desc="计算DN5"):
             target_geom = gdf.iloc[i].geometry
-            target_id = gdf.iloc[i]['ID']
+            target_id = gdf.iloc[i][self.island_id_column]
             
             # 存储候选的真实边界距离
             neighbor_distances = []
@@ -643,9 +649,9 @@ class IslandAttributeCalculator:
             dn5_values.append(avg_dist)
         
         # ====================== 修复：安全赋值 ======================
-        dn5_mapping = dict(zip(gdf['ID'], dn5_values))
+        dn5_mapping = dict(zip(gdf[self.island_id_column], dn5_values))
         self.islands_utm_full['DN5'] = dn5_values
-        self.islands_utm['DN5'] = self.islands_utm['ID'].map(dn5_mapping)
+        self.islands_utm['DN5'] = self.islands_utm[self.island_id_column].map(dn5_mapping)
         self.calculated_attributes.add('DN5')
         
         # 结果验证
@@ -670,7 +676,7 @@ class IslandAttributeCalculator:
         gdf = self.islands_utm_full.copy()
         centroids = np.array([(geom.x, geom.y) for geom in gdf['centroid']])
         areas = gdf['Area'].values
-        ids = gdf['ID'].values
+        ids = gdf[self.island_id_column].values
         n_islands = len(gdf)
         
         if n_islands < 2:
@@ -682,7 +688,7 @@ class IslandAttributeCalculator:
         
         # 构建BallTree快速筛选候选（查询前100个质心最近的，保证不会漏算最近大岛）
         tree = BallTree(centroids, metric='euclidean', leaf_size=20)
-        k_candidate = min(100, n_islands)  # 候选数量，保证覆盖所有可能的大岛
+        k_candidate = n_islands  # 候选数量，保证覆盖所有可能的大岛
         _, candidate_indices = tree.query(centroids, k=k_candidate)
         
         # 初始化结果数组
@@ -733,8 +739,8 @@ class IslandAttributeCalculator:
         
         self.islands_utm_full['DNL'] = dnl_values
         self.islands_utm_full["DNL'"] = dnl_prime_values
-        self.islands_utm['DNL'] = self.islands_utm['ID'].map(dnl_mapping)
-        self.islands_utm["DNL'"] = self.islands_utm['ID'].map(dnl_prime_mapping)
+        self.islands_utm['DNL'] = self.islands_utm[self.island_id_column].map(dnl_mapping)
+        self.islands_utm["DNL'"] = self.islands_utm[self.island_id_column].map(dnl_prime_mapping)
         
         self.calculated_attributes.update(['DNL', "DNL'"])
         
@@ -765,7 +771,7 @@ class IslandAttributeCalculator:
             if not self.is_target_mode or self.target_island_ids is None:
                 print("❌ 仅目标岛屿模式需要先加载目标岛屿文件")
                 return False
-            all_candidates = self.islands_utm_full[self.islands_utm_full['ID'].isin(self.target_island_ids)].copy()
+            all_candidates = self.islands_utm_full[self.islands_utm_full[self.island_id_column].isin(self.target_island_ids)].copy()
             print(f"NI/NI'计算模式: 仅基于目标岛屿，总候选数: {len(all_candidates)}")
         else:
             all_candidates = self.islands_utm_full.copy()
@@ -787,7 +793,7 @@ class IslandAttributeCalculator:
 
         for _, island in tqdm(self.islands_utm_full.iterrows(), total=len(self.islands_utm_full), desc="计算NI/NI'"):
             island_geom = island.geometry
-            island_id = island['ID']
+            island_id = island[self.island_id_column]
             ni = 0.0
             ni_prime = 0.0
 
@@ -800,7 +806,7 @@ class IslandAttributeCalculator:
 
             for idx in candidate_idx:
                 cand = all_candidates.iloc[idx]
-                if cand['ID'] == island_id:
+                if cand[self.island_id_column] == island_id:
                     continue
                 try:
                     d = island_geom.distance(cand.geometry) / 1000
@@ -819,7 +825,7 @@ class IslandAttributeCalculator:
 
                 for idx in candidate_idx_p:
                     cand = big_candidates.iloc[idx]
-                    if cand['ID'] == island_id:
+                    if cand[self.island_id_column] == island_id:
                         continue
                     try:
                         d = island_geom.distance(cand.geometry) / 1000
@@ -832,14 +838,14 @@ class IslandAttributeCalculator:
             ni_prime_values.append(ni_prime)
 
         # ====================== 修复：安全赋值 ======================
-        ni_map = dict(zip(self.islands_utm_full['ID'], ni_values))
-        ni_p_map = dict(zip(self.islands_utm_full['ID'], ni_prime_values))
+        ni_map = dict(zip(self.islands_utm_full[self.island_id_column], ni_values))
+        ni_p_map = dict(zip(self.islands_utm_full[self.island_id_column], ni_prime_values))
 
         self.islands_utm_full['NI'] = ni_values
         self.islands_utm_full["NI'"] = ni_prime_values
 
-        self.islands_utm['NI'] = self.islands_utm['ID'].map(ni_map)
-        self.islands_utm["NI'"] = self.islands_utm['ID'].map(ni_p_map)
+        self.islands_utm['NI'] = self.islands_utm[self.island_id_column].map(ni_map)
+        self.islands_utm["NI'"] = self.islands_utm[self.island_id_column].map(ni_p_map)
 
         self.calculated_attributes.update(['NI', "NI'"])
         self.calculation_options['NI_use_target_islands_only'] = use_target_islands_only
@@ -910,8 +916,8 @@ class IslandAttributeCalculator:
             
             # ====================== 修复：安全赋值 ======================
             self.islands_utm_full[col_name] = land_ratios
-            col_mapping = dict(zip(self.islands_utm_full['ID'], land_ratios))
-            self.islands_utm[col_name] = self.islands_utm['ID'].map(col_mapping)
+            col_mapping = dict(zip(self.islands_utm_full[self.island_id_column], land_ratios))
+            self.islands_utm[col_name] = self.islands_utm[self.island_id_column].map(col_mapping)
         
         self.calculated_attributes.update(['B1', 'B3', 'B5'])
         print("✓ 周边陆地占比 B1, B3, B5 计算完成")
@@ -1013,7 +1019,7 @@ class IslandAttributeCalculator:
             print(f"保存模式: {'仅目标岛屿结果' if self.is_target_mode else '全岛屿结果'}")
         
         # 确定输出列（必含基础属性+已计算的属性 + 原始所有属性）
-        base_columns = ['ID', 'Area', 'Lon', 'Lat']
+        base_columns = [self.island_id_column, 'Area', 'Lon', 'Lat']
         calculated_cols = [col for col in ['DM', 'SDM', 'DN5', 'DNL', "DNL'", 'NI', "NI'", 'B1', 'B3', 'B5'] 
                           if col in save_gdf.columns]
         
@@ -1064,7 +1070,7 @@ class IslandAttributeCalculator:
         # 保存质心经纬度
         if save_centroids and 'Lon' in save_results_df.columns and 'Lat' in save_results_df.columns:
             centroids_path = os.path.join(self.output_dir, f'{filename_prefix}_centroids.csv')
-            centroids_data = save_results_df[['ID', 'Lon', 'Lat']].copy()
+            centroids_data = save_results_df[[self.island_id_column, 'Lon', 'Lat']].copy()
             centroids_data.to_csv(centroids_path, index=False, encoding='utf-8-sig')
             saved_files.append(f"质心经纬度: {centroids_path}")
         
@@ -1079,7 +1085,7 @@ class IslandAttributeCalculator:
                     f.write(f"有效目标岛屿数量: {len(self.target_island_ids)}\n")
                     f.write(f"目标ID列名: {self.target_id_column}\n")
                 f.write(f"已计算属性: {sorted(self.calculated_attributes)}\n")
-                f.write(f"基础属性: ID, Area, Lon, Lat\n")
+                f.write(f"基础属性: {self.island_id_column}, Area, Lon, Lat\n")
                 f.write("="*40 + "\n")
                 for key, value in self.calculation_options.items():
                     f.write(f"{key}: {value}\n")
@@ -1118,6 +1124,7 @@ class IslandAttributeCalculator:
 # 便捷调用函数
 def calculate_island_attributes(coastline_path, islands_path, 
                                 target_file_path=None, target_id_column='ID',
+                                island_id_column='ID',  # 🔥 新增参数
                                 output_dir="output",
                                 attributes='all', save_formats=None, **kwargs):
     """
@@ -1128,6 +1135,7 @@ def calculate_island_attributes(coastline_path, islands_path,
         islands_path=islands_path,
         target_file_path=target_file_path,
         target_id_column=target_id_column,
+        island_id_column=island_id_column,  # 🔥 修复：使用传入的参数
         output_dir=output_dir
     )
     
@@ -1179,6 +1187,7 @@ def main():
     target_group = parser.add_argument_group('目标岛屿参数（可选）')
     target_group.add_argument('--target-file', type=str, help='目标岛屿表格文件路径（支持xlsx/csv）')
     target_group.add_argument('--target-id-column', type=str, default='ID', help='目标表格中的ID列名，默认ID')
+    target_group.add_argument('--island-id-column', type=str, default='ID', help='岛屿图层中的ID列名，默认ID')
     
     # 输出参数
     output_group = parser.add_argument_group('输出参数')
@@ -1245,6 +1254,7 @@ def main():
         islands_path=args.islands,
         target_file_path=args.target_file,
         target_id_column=args.target_id_column,
+        island_id_column=args.island_id_column, 
         output_dir=args.output
     )
     
@@ -1271,5 +1281,3 @@ def main():
     else:
         print("❌ 计算失败，请检查错误信息")
         sys.exit(1)
-
-
