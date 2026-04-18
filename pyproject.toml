@@ -5,16 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "islandattrs"
 version = "0.1.2"
-authors = [{ name="XY1019-GAO" }]
 description = "岛屿生物地理学领域专业的岛屿地理属性计算工具包"
-readme = README.md
+readme = "README.md"
 requires-python = ">=3.8"
-license = { text="MIT" }
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
+license = "MIT"
 
 dependencies = [
     "geopandas>=1.0.0",
@@ -32,7 +26,6 @@ dependencies = [
     "bottleneck>=1.3.6"
 ]
 
-# 👇 这一行是命令行入口（关键！）
 [project.scripts]
 islandattrs = "islandattrs.cli:main"
 
@@ -43,5 +36,3 @@ include-package-data = true
 "islandattrs.data" = ["*"]
 "islandattrs.data.built_in_results" = ["*"]
 "islandattrs.data.test_data" = ["*"]
-
-
